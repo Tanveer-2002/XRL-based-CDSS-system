@@ -1,0 +1,83 @@
+# =========================================================================
+# MIMIC-IV & Clinical Data Privacy (PhysioNet Data Use Agreement Compliance)
+# =========================================================================
+# Strictly ignore all raw, interim, processed, and feedback clinical data
+data/raw/*
+!data/raw/.gitkeep
+
+data/interim/*
+!data/interim/.gitkeep
+
+data/processed/*
+!data/processed/.gitkeep
+
+data/feedback/*
+!data/feedback/.gitkeep
+
+# Ignore all CSV and compressed data files anywhere in data/
+data/**/*.csv
+data/**/*.pkl
+*.csv.gz
+*.parquet
+*.feather
+*.h5
+*.sqlite3
+
+# Ignore external MIMIC-IV database directories
+mimic-iv*/
+**/mimic-iv*/
+
+# Generated Patient Reports (prevent leaking patient records or identifiers)
+reports/*.json
+reports/*.html
+reports/*.md
+!reports/.gitkeep
+# Allow aggregate evaluation benchmark visualizations
+!reports/*.png
+!reports/*.jpg
+
+# =========================================================================
+# Python & Virtual Environments
+# =========================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.env
+.env.*
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================================================================
+# Testing & Code Quality
+# =========================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# =========================================================================
+# Jupyter Notebook Checkpoints
+# =========================================================================
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# =========================================================================
+# IDEs & System Files
+# =========================================================================
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
