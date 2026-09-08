@@ -27,14 +27,28 @@ data/**/*.pkl
 mimic-iv*/
 **/mimic-iv*/
 
-# Generated Patient Reports (prevent leaking patient records or identifiers)
-reports/*.json
-reports/*.html
-reports/*.md
+# =========================================================================
+# Model Weights & Scaler Artifacts (prevent binary merge conflicts)
+# =========================================================================
+*.pt
+*.pth
+*.onnx
+*.pkl
+models/rl_agent/*
+!models/rl_agent/.gitkeep
+models/scalers/*
+!models/scalers/.gitkeep
+models/encoders/*
+!models/encoders/.gitkeep
+
+# =========================================================================
+# Generated Patient Reports & Benchmark Visualizations
+# =========================================================================
+reports/*
 !reports/.gitkeep
-# Allow aggregate evaluation benchmark visualizations
-!reports/*.png
-!reports/*.jpg
+*.png
+*.jpg
+*.jpeg
 
 # =========================================================================
 # Python & Virtual Environments
