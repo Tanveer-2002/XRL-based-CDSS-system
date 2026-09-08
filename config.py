@@ -15,10 +15,17 @@ INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 PREPROCESSING_OBJECTS_DIR = PROCESSED_DATA_DIR / "preprocessing_objects"
 
-# Fallback path to MIMIC-IV in parent folder if not copied to raw
-MIMIC_IV_ROOT = PROJECT_ROOT / "mimic-iv-3.1" / "hosp"
-if not MIMIC_IV_ROOT.exists():
-    MIMIC_IV_ROOT = RAW_DATA_DIR / "mimic-iv-3.1" / "hosp"
+# Path to MIMIC-IV hosp folder (auto-detects standalone 'hosp' or 'mimic-iv-3.1/hosp')
+_MIMIC_CANDIDATES = [
+    Path(os.environ.get("MIMIC_IV_PATH", "")),
+    PROJECT_ROOT / "mimic-iv-3.1" / "hosp",
+    PROJECT_ROOT / "hosp",
+    RAW_DATA_DIR / "mimic-iv-3.1" / "hosp",
+    RAW_DATA_DIR / "hosp",
+    PROJECT_ROOT / "mimic-iv" / "hosp",
+    RAW_DATA_DIR / "mimic-iv" / "hosp",
+]
+MIMIC_IV_ROOT = next((p for p in _MIMIC_CANDIDATES if p.exists() and (p / "diagnoses_icd.csv.gz").exists()), PROJECT_ROOT / "mimic-iv-3.1" / "hosp")
 
 MODELS_DIR = BASE_DIR / "models"
 RL_AGENT_DIR = MODELS_DIR / "rl_agent"
