@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Type 2 Diabetes CDSS - Clinical Dashboard</title>
+    <!-- Inter Font & Chart.js -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --primary-light: #e8f0fe;
+            --success: #28a745;
+            --success-light: #d4edda;
+            --warning: #ffc107;
+            --warning-light: #fff3cd;
+            --danger: #dc3545;
+            --danger-light: #f8d7da;
+            --alert-high: #fd7e14;
+            --alert-high-light: #ffe8d6;
+            --gray-50: #f8f9fa;
+            --gray-100: #f1f3f5;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+            --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f6f9;
+            color: var(--gray-900);
+            line-height: 1.5;
+            padding-bottom: 60px;
+        }
+
+        /* Navigation Header */
+        .navbar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--gray-300);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            background: linear-gradient(135deg, #1a73e8, #0d47a1);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+        }
+
+        .brand-title h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+            letter-spacing: -0.2px;
+        }
+
+        .brand-title p {
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
+        .nav-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--success-light);
+            color: #155724;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .api-link {
+            font-size: 13px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--primary-light);
+            transition: all 0.2s;
+        }
+
+        .api-link:hover {
+            background: var(--primary-light);
+        }
+
+        /* Container Layout */
+        .container {
+            max-width: 1200px;
+            margin: 28px auto;
+            padding: 0 24px;
+        }
+
+        /* Search Section */
+        .search-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 24px 32px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 28px;
+        }
+
+        .search-card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--gray-900);
+        }
+
+        .search-card p {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-bottom: 18px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 48px;
+            padding: 0 18px;
+            font-size: 15px;
+            font-family: inherit;
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #ffffff;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.15);
+        }
+
+        .submit-btn {
+            height: 48px;
+            padding: 0 28px;
+            background: var(--primary);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .submit-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        .quick-select-row {
+            margin-top: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quick-select-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .quick-pill {
+            background: var(--gray-100);
+            color: var(--gray-800);
+            border: 1px solid var(--gray-300);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .quick-pill:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .quick-pill.deteriorating {
+            border-color: #f5c6cb;
+            color: #721c24;
+            background: #fdf3f4;
+        }
+
+        .quick-pill.deteriorating:hover {
+            background: #f8d7da;
+        }
+
+        .quick-pill.stable {
+            border-color: #c3e6cb;
+            color: #155724;
+            background: #f4faf6;
+        }
+
+        .quick-pill.stable:hover {
+            background: #d4edda;
+        }
+
+        /* Loading Spinner */
+        .loading-state {
+            display: none;
+            text-align: center;
+            padding: 60px 0;
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+        }
+
+        .spinner {
+            border: 4px solid var(--gray-200);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-state h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .loading-state p {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        /* Error Alert */
+        .error-state {
+            display: none;
+            background: #fdf3f4;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+
+        .error-state h4 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .error-state p {
+            font-size: 13px;
+        }
+
+        /* Report Main Container */
+        .report-view {
+            display: none;
+        }
+
+        /* Report Header Banner */
+        .report-header {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 24px 32px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .report-header-left h2 {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--gray-900);
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .patient-tag {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .report-header-left p {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .report-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .trajectory-badge {
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .badge-deteriorating {
+            background: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid #f5c6cb;
+        }
+
+        .badge-rapidly-deteriorating {
+            background: #721c24;
+            color: #ffffff;
+        }
+
+        .badge-stable {
+            background: var(--success-light);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .badge-improving {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid #b8daff;
+        }
+
+        /* Demographics Strip */
+        .demographics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 20px 28px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .demo-item small {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .demo-item span {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        /* Grid for Recommendation & SHAP */
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .two-column-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Recommendation Card */
+        .card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+        }
+
+        .card-header-clean {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 12px;
+        }
+
+        .card-header-clean h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rec-callout {
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            margin-bottom: 18px;
+            border-left: 6px solid var(--primary);
+            background: var(--gray-50);
+        }
+
+        .rec-action-name {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .rec-meta-row {
+            display: flex;
+            gap: 18px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .rec-guidance {
+            font-size: 13px;
+            color: var(--gray-700);
+            line-height: 1.5;
+        }
+
+        /* Q-Values Chart */
+        .q-chart-container {
+            margin-top: 16px;
+            height: 190px;
+        }
+
+        /* XAI Explanation Card */
+        .xai-summary-box {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary);
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: #0d47a1;
+            font-weight: 500;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .xai-narrative {
+            font-size: 13px;
+            color: var(--gray-700);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .key-factors-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .factor-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
+            font-size: 13px;
+        }
+
+        .factor-desc {
+            font-weight: 500;
+            color: var(--gray-800);
+        }
+
+        .factor-shap {
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .shap-pos {
+            background: #fde8e8;
+            color: #c81e1e;
+        }
+
+        .shap-neg {
+            background: #e1effe;
+            color: #1e429f;
+        }
+
+        /* Trajectory Table Card */
+        .table-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background: var(--gray-50);
+            color: var(--gray-700);
+            font-weight: 600;
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--gray-300);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--gray-200);
+            color: var(--gray-800);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--gray-50);
+        }
+
+        .badge-target {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .target-on {
+            background: var(--success-light);
+            color: #155724;
+        }
+
+        .target-off {
+            background: var(--danger-light);
+            color: #721c24;
+        }
+
+        .trend-up {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        .trend-down {
+            color: var(--success);
+            font-weight: 700;
+        }
+
+        .trend-stable {
+            color: var(--gray-600);
+        }
+
+        /* Timeline Graphs Card */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 850px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+            height: 320px;
+        }
+
+        .chart-box h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 12px;
+        }
+
+        /* Action Bar / Export */
+        .export-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-outline {
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--gray-300);
+            background: #ffffff;
+            color: var(--gray-700);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-400);
+            color: var(--gray-900);
+        }
+
+        /* Print styles */
+        @media print {
+            .navbar, .search-card, .export-bar, .api-link {
+                display: none !important;
+            }
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+            .container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .card, .search-card, .table-card, .report-header, .demographics-grid, .chart-box {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">X</div>
+            <div class="brand-title">
+                <h1>Type 2 Diabetes CDSS</h1>
+                <p>Longitudinal Trajectory Analysis &bull; Offline CQL &bull; SHAP Explainability</p>
+            </div>
+        </div>
+        <div class="nav-status">
+            <div class="status-badge" style="background:#e8f0fe; color:#1a73e8;" title="Strategy 1 & 2 Learning Buffers">
+                <span>Feedback: <strong id="navFeedbackCount">0</strong></span>
+                <span style="opacity:0.4;">|</span>
+                <span>Outcomes: <strong id="navOutcomeCount">0</strong></span>
+            </div>
+            <button type="button" class="btn-outline" style="background:#fef3c7; border-color:#fde68a; color:#92400e; font-weight:700;" onclick="triggerRetrain()" title="Incrementally fine-tune CQL agent using Strategy 1 & 2 data">
+                ⚡ Retrain Agent
+            </button>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>System Active</span>
+            </div>
+            <a href="/docs" target="_blank" class="api-link">&lt;/&gt; API Docs</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Patient Search, New Encounter Input & Report Action Card -->
+        <div class="search-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                <div>
+                    <h2>Patient Evaluation & Cumulative Report</h2>
+                    <p style="margin: 4px 0 0 0; color: var(--gray-600); font-size: 13px;">
+                        Enter a Patient ID to view their cumulative report. Optionally enter their latest visit data to add to the database.
+                    </p>
+                </div>
+                <div id="dataSourceBadge" style="display: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;"></div>
+            </div>
+
+            <!-- Patient ID & Toggle New Data Row -->
+            <div style="display: flex; gap: 12px; align-items: center; margin: 16px 0; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--gray-700); margin-bottom: 4px;">Patient ID *</label>
+                    <input 
+                        type="text" 
+                        id="patientIdInput" 
+                        class="search-input" 
+                        placeholder="e.g. P1001, P1002, P1003, P1010..." 
+                        list="patientList" 
+                        required 
+                        autocomplete="off"
+                        style="height: 42px; font-size: 14px;"
+                    >
+                    <datalist id="patientList"></datalist>
+                </div>
+
+                <div style="padding-top: 20px;">
+                    <button type="button" id="btnToggleNewData" class="btn-outline" onclick="toggleNewDataSection()" style="height: 42px; font-weight: 600; background: #f8fafc;">
+                        <span id="toggleNewDataIcon">+</span> Enter Latest Visit Data (Optional)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Select Pills -->
+            <div class="quick-select-row" style="margin-bottom: 16px;">
+                <span class="quick-select-label">Quick Select:</span>
+                <button type="button" class="quick-pill deteriorating" onclick="selectPatient('P1001')">P1001 (Deteriorating - Critical)</button>
+                <button type="button" class="quick-pill deteriorating" onclick="selectPatient('P1004')">P1004 (Rising HbA1c)</button>
+                <button type="button" class="quick-pill stable" onclick="selectPatient('P1002')">P1002 (Stable Control)</button>
+                <button type="button" class="quick-pill stable" onclick="selectPatient('P1005')">P1005 (Routine Cadence)</button>
+                <button type="button" class="quick-pill" onclick="selectPatient('P1003')">P1003 (Mild Drift)</button>
+            </div>
+
+            <!-- Optional: Latest Data Input Grid (Adds to Database) -->
+            <div id="newVisitSection" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 18px; margin-bottom: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <strong style="font-size: 13px; color: var(--gray-900);">Latest Encounter Labs (Optional: Adds New Visit to Database)</strong>
+                        <p style="font-size: 12px; color: var(--gray-600); margin: 2px 0 0 0;">
+                            If entered, these labs are saved to the database, updating the patient's longitudinal trajectory.
+                        </p>
+                    </div>
+                    <button type="button" class="btn-outline" style="font-size: 11px; padding: 4px 10px;" onclick="clearNewVisitFields()">
+                        Clear Labs
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">Visit Date:</label>
+                        <input type="date" id="newVisitDate" class="search-input" style="height: 38px; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">HbA1c (%):</label>
+                        <input type="number" step="0.1" id="newVisitHba1c" class="search-input" style="height: 38px; font-size: 13px;" placeholder="e.g. 7.5">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">Glucose (mg/dL):</label>
+                        <input type="number" step="1" id="newVisitGlucose" class="search-input" style="height: 38px; font-size: 13px;" placeholder="e.g. 135">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">Systolic BP (mmHg):</label>
+                        <input type="number" step="1" id="newVisitSbp" class="search-input" style="height: 38px; font-size: 13px;" placeholder="e.g. 130">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">Diastolic BP (mmHg):</label>
+                        <input type="number" step="1" id="newVisitDbp" class="search-input" style="height: 38px; font-size: 13px;" placeholder="e.g. 82">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">BMI (kg/m²):</label>
+                        <input type="number" step="0.1" id="newVisitBmi" class="search-input" style="height: 38px; font-size: 13px;" placeholder="e.g. 27.8">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size: 11px; font-weight:600; color: var(--gray-700); margin-bottom: 4px;">Creatinine (mg/dL):</label>
+                        <input type="number" step="0.05" id="newVisitCreatinine" class="search-input" style="height: 38px; font-size: 13px;" placeholder="e.g. 1.05">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="submit-btn" id="btnCalculateReport" onclick="handleCalculateReport()" style="height: 44px; padding: 0 24px; font-size: 14px;">
+                    <span>Calculate Cumulative Report</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+
+                <button type="button" class="btn-outline" id="btnSaveEncounterOnly" onclick="handleSaveEncounterOnly()" style="height: 44px; padding: 0 18px; font-size: 13px; font-weight: 600;">
+                    💾 Add Visit to Database
+                </button>
+
+                <span style="font-size: 12px; color: var(--gray-600);">
+                    (If new visit labs are empty, the existing patient trajectory is used automatically)
+                </span>
+            </div>
+
+            <!-- Status Toast Message -->
+            <div id="formSuccessToast" style="display: none; margin-top: 14px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;"></div>
+        </div>
+
+        <!-- Error Banner -->
+        <div class="error-state" id="errorBox">
+            <h4 id="errorTitle">Error Loading Report</h4>
+            <p id="errorMessage">Please verify the patient ID and try again.</p>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-state" id="loadingBox">
+            <div class="spinner"></div>
+            <h3>Generating Longitudinal Cumulative Report...</h3>
+            <p>Evaluating multi-encounter trajectory deltas, querying CQL policy, and calculating SHAP attributions.</p>
+        </div>
+
+        <!-- Cumulative Report View -->
+        <div class="report-view" id="reportView">
+            
+            <!-- Report Header -->
+            <div class="report-header">
+                <div class="report-header-left">
+                    <h2>Cumulative Health Report <span class="patient-tag" id="repPatientId">P1001</span></h2>
+                    <p id="repMetadata">Report ID: REP-P1001-2026 | Generated at 2026-09-03</p>
+                </div>
+                <div class="report-header-right">
+                    <span class="trajectory-badge badge-deteriorating" id="repTrajectoryBadge">Trajectory: DETERIORATING</span>
+                </div>
+            </div>
+
+            <!-- Patient Demographics Strip -->
+            <div class="demographics-grid">
+                <div class="demo-item">
+                    <small>Age</small>
+                    <span id="repAge">62 yrs</span>
+                </div>
+                <div class="demo-item">
+                    <small>Gender</small>
+                    <span id="repGender">Male</span>
+                </div>
+                <div class="demo-item">
+                    <small>Smoking History</small>
+                    <span id="repSmoking">Former</span>
+                </div>
+                <div class="demo-item">
+                    <small>Physical Activity</small>
+                    <span id="repActivity">Moderate</span>
+                </div>
+                <div class="demo-item">
+                    <small>Clinical Encounters</small>
+                    <span id="repVisits">8 visits</span>
+                </div>
+                <div class="demo-item">
+                    <small>Monitoring Duration</small>
+                    <span id="repDuration">512 days</span>
+                </div>
+            </div>
+
+            <!-- Two Column: RL Recommendation & Explainable AI -->
+            <div class="two-column-grid">
+                
+                <!-- Card 1: RL Recommendation & Q-Values -->
+                <div class="card">
+                    <div class="card-header-clean">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Reinforcement Learning Decision
+                        </h3>
+                        <span class="badge-target target-off" id="repUrgencyBadge">Urgency: Critical</span>
+                    </div>
+
+                    <div class="rec-callout" id="recCallout">
+                        <div class="rec-action-name" id="recActionName">Clinical Evaluation</div>
+                        <div class="rec-meta-row">
+                            <div><strong>Suggested Cadence:</strong> <span id="recInterval">Immediate / &lt; 1 week</span></div>
+                            <div><strong>Urgency:</strong> <span id="recUrgency">Critical</span></div>
+                        </div>
+                        <div class="rec-guidance" id="recGuidance">
+                            Urgent comprehensive diagnostic assessment and specialist review due to acute instability or severe risk.
+                        </div>
+                    </div>
+
+                    <h4 style="font-size: 13px; font-weight: 700; margin-top: 14px; color: var(--gray-700);">Action Q-Value Comparison (CQL Policy)</h4>
+                    <div class="q-chart-container">
+                        <canvas id="qValuesChart"></canvas>
+                    </div>
+
+                    <!-- Strategy 2: Clinician-in-the-Loop Feedback (RLHF) -->
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--gray-300);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                            <h4 style="font-size: 13px; font-weight: 700; color: var(--gray-900);">
+                                Clinician Review & Supervision (Strategy 2)
+                            </h4>
+                            <span style="font-size: 11px; background:#e8f0fe; color:#1a73e8; padding: 2px 6px; border-radius: 4px; font-weight:600;">RLHF</span>
+                        </div>
+                        <p style="font-size: 12px; color: var(--gray-600); margin-bottom: 12px;">
+                            Confirm model recommendation or submit an expert clinical override to train the agent.
+                        </p>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn-outline" style="background: #e6f4ea; border-color: #ceead6; color: #137333; font-weight: 600;" onclick="submitFeedback(false)">
+                                ✓ Accept Recommendation
+                            </button>
+                            <button type="button" class="btn-outline" style="background: #fef7e0; border-color: #feefc3; color: #b06000; font-weight: 600;" onclick="toggleOverrideForm()">
+                                ✎ Override Action
+                            </button>
+                        </div>
+
+                        <!-- Override Form (hidden by default) -->
+                        <div id="overrideBox" style="display: none; margin-top: 12px; background: var(--gray-50); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-300);">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--gray-700);">Select Clinician-Preferred Action:</label>
+                            <select id="overrideActionSelect" style="width: 100%; height: 36px; padding: 0 8px; font-size: 13px; border-radius: var(--radius-sm); border: 1px solid var(--gray-300); margin-bottom: 8px;">
+                                <option value="0">Routine Monitoring (6 months)</option>
+                                <option value="1">Increased Monitoring Frequency (1 - 3 months)</option>
+                                <option value="2">Early-Risk Alert (2 - 4 weeks)</option>
+                                <option value="3">Clinical Evaluation (Urgent / &lt; 1 week)</option>
+                            </select>
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--gray-700);">Clinical Rationale / Notes (optional):</label>
+                            <input type="text" id="overrideNotesInput" placeholder="e.g. Patient exhibits early peripheral neuropathy symptoms" style="width: 100%; height: 36px; padding: 0 8px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-300); margin-bottom: 8px;">
+                            <button type="button" class="submit-btn" style="height: 34px; padding: 0 16px; font-size: 12px;" onclick="submitFeedback(true)">
+                                Submit Expert Override
+                            </button>
+                        </div>
+
+                        <div id="fbSuccessMsg" style="display: none; margin-top: 10px; font-size: 12px; color: #137333; font-weight: 600; background: #e6f4ea; padding: 8px 12px; border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: SHAP Explainability & Rationale -->
+                <div class="card">
+                    <div class="card-header-clean">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            SHAP Explainable AI Rationale
+                        </h3>
+                        <span style="font-size: 11px; font-weight: 600; color: var(--gray-600);">Shapley Attributions</span>
+                    </div>
+
+                    <div class="xai-summary-box" id="xaiSummary">
+                        An early-risk alert was generated because HbA1c and glucose have accelerated over recent observations.
+                    </div>
+
+                    <p class="xai-narrative" id="xaiNarrative">
+                        Longitudinal trajectory analysis indicates deteriorating metabolic control. The primary driver is glycemic velocity.
+                    </p>
+
+                    <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--gray-700);">Key Driving Trajectory Indicators:</h4>
+                    <ul class="key-factors-list" id="xaiFactorsList">
+                        <!-- Filled by JS -->
+                    </ul>
+                </div>
+
+            </div>
+
+            <!-- Longitudinal Trajectory Table -->
+            <div class="table-card">
+                <div class="card-header-clean">
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        Longitudinal Health Trajectory Analysis
+                    </h3>
+                    <span style="font-size: 12px; color: var(--gray-600);">Calculated against ADA Clinical Targets</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Biomarker</th>
+                                <th>Current Value</th>
+                                <th>Change (&Delta;)</th>
+                                <th>Monthly Rate</th>
+                                <th>3-Visit MA</th>
+                                <th>Clinical Trend</th>
+                                <th>ADA Guideline Target</th>
+                                <th>Target Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trajectoryTableBody">
+                            <!-- Filled dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Longitudinal Trajectory Visual Charts -->
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <h4>Glycemic Trajectory (HbA1c % & Fasting Glucose mg/dL)</h4>
+                    <canvas id="glycemicChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h4>Blood Pressure & BMI Trajectory</h4>
+                    <canvas id="vitalChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Export / Action Bar -->
+            <div class="export-bar">
+                <button type="button" class="btn-outline" onclick="window.print()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    Print / Save PDF
+                </button>
+                <a id="btnHtmlView" href="#" target="_blank" class="btn-outline">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Standalone HTML Dashboard
+                </a>
+                <a id="btnJsonView" href="#" target="_blank" class="btn-outline">
+                    { } JSON Report
+                </a>
+                <a id="btnMdView" href="#" target="_blank" class="btn-outline">
+                    # Markdown
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Auto-detect API Base URL: use current origin if served via HTTP, fallback to http://localhost:8000
+        const API_BASE = (window.location.origin && window.location.origin.startsWith("http")) ? window.location.origin : "http://localhost:8000";
+
+        let qChart = null;
+        let glycemicChart = null;
+        let vitalChart = null;
+
+        // Populate patient dropdown on load
+        window.addEventListener("DOMContentLoaded", async () => {
+            loadFeedbackStats();
+
+            const patientInput = document.getElementById("patientIdInput");
+            if (patientInput) {
+                patientInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCalculateReport();
+                    }
+                });
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/api/patients?limit=60`);
+                if (res.ok) {
+                    const patients = await res.json();
+                    const datalist = document.getElementById("patientList");
+                    patients.forEach(p => {
+                        const opt = document.createElement("option");
+                        opt.value = p.subject_id;
+                        opt.label = `Age ${p.age} • ${p.overall_trajectory_status}`;
+                        datalist.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.warn("Could not preload patient list:", e);
+            }
+
+            // Auto-load P1001 as an initial demo
+            selectPatient("P1001");
+        });
+
+        function toggleNewDataSection() {
+            const sec = document.getElementById("newVisitSection");
+            const icon = document.getElementById("toggleNewDataIcon");
+            if (!sec) return;
+            if (sec.style.display === "none" || sec.style.display === "") {
+                sec.style.display = "block";
+                if (icon) icon.innerText = "−";
+            } else {
+                sec.style.display = "none";
+                if (icon) icon.innerText = "+";
+            }
+        }
+
+        function clearNewVisitFields() {
+            const fields = ["newVisitDate", "newVisitHba1c", "newVisitGlucose", "newVisitSbp", "newVisitDbp", "newVisitBmi", "newVisitCreatinine"];
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            const toast = document.getElementById("formSuccessToast");
+            if (toast) toast.style.display = "none";
+        }
+
+        function hasNewVisitData() {
+            const fields = ["newVisitHba1c", "newVisitGlucose", "newVisitSbp", "newVisitDbp", "newVisitBmi", "newVisitCreatinine"];
+            return fields.some(id => {
+                const el = document.getElementById(id);
+                return el && el.value.trim() !== "";
+            });
+        }
+
+        function getNewVisitPayload() {
+            const payload = {};
+            const chartdate = document.getElementById("newVisitDate")?.value.trim();
+            if (chartdate) payload.chartdate = chartdate;
+
+            const numFields = [
+                { id: "newVisitHba1c", key: "hba1c" },
+                { id: "newVisitGlucose", key: "glucose" },
+                { id: "newVisitSbp", key: "sbp" },
+                { id: "newVisitDbp", key: "dbp" },
+                { id: "newVisitBmi", key: "bmi" },
+                { id: "newVisitCreatinine", key: "creatinine" }
+            ];
+
+            numFields.forEach(({ id, key }) => {
+                const el = document.getElementById(id);
+                if (el && el.value.trim() !== "") {
+                    const val = parseFloat(el.value);
+                    if (!isNaN(val)) payload[key] = val;
+                }
+            });
+
+            return payload;
+        }
+
+        function showFormToast(message, type = "success") {
+            const toast = document.getElementById("formSuccessToast");
+            if (!toast) return;
+            toast.style.display = "block";
+            toast.innerText = message;
+            if (type === "success") {
+                toast.style.background = "#e6f4ea";
+                toast.style.border = "1px solid #ceead6";
+                toast.style.color = "#137333";
+            } else if (type === "error") {
+                toast.style.background = "#fde8e8";
+                toast.style.border = "1px solid #f8b4b4";
+                toast.style.color = "#c81e1e";
+            } else {
+                toast.style.background = "#e8f0fe";
+                toast.style.border = "1px solid #d2e3fc";
+                toast.style.color = "#1a73e8";
+            }
+        }
+
+        async function saveNewVisit(patientId) {
+            const payload = getNewVisitPayload();
+            const res = await fetch(`${API_BASE}/api/patients/${encodeURIComponent(patientId)}/encounter`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Server returned error status ${res.status}`);
+            }
+            return await res.json();
+        }
+
+        async function handleCalculateReport() {
+            const patientId = document.getElementById("patientIdInput").value.trim();
+            if (!patientId) {
+                showFormToast("Please enter or select a Patient ID.", "error");
+                return;
+            }
+
+            const calcBtn = document.getElementById("btnCalculateReport");
+            const saveBtn = document.getElementById("btnSaveEncounterOnly");
+            if (calcBtn) calcBtn.disabled = true;
+            if (saveBtn) saveBtn.disabled = true;
+
+            try {
+                let isNewDataSaved = false;
+                if (hasNewVisitData()) {
+                    showFormToast("Adding latest visit data to database and recalculating trajectory...", "info");
+                    const encResult = await saveNewVisit(patientId);
+                    isNewDataSaved = true;
+                    clearNewVisitFields();
+                    loadFeedbackStats();
+                    const loopStatus = (encResult.closed_transitions && encResult.closed_transitions.length > 0)
+                        ? ` (Closed ${encResult.closed_transitions.length} outcome transition loop(s))`
+                        : "";
+                    showFormToast(`✓ New visit recorded into database! Total visits: ${encResult.new_visit_number}${loopStatus}. Generating updated report...`, "success");
+                }
+
+                await loadPatientReport(patientId, isNewDataSaved);
+            } catch (err) {
+                console.error("Calculate Report Error:", err);
+                showFormToast(`Error: ${err.message}`, "error");
+            } finally {
+                if (calcBtn) calcBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
+            }
+        }
+
+        async function handleSaveEncounterOnly() {
+            const patientId = document.getElementById("patientIdInput").value.trim();
+            if (!patientId) {
+                showFormToast("Please enter or select a Patient ID.", "error");
+                return;
+            }
+
+            if (!hasNewVisitData()) {
+                showFormToast("Please enter at least one biomarker value in the latest visit fields before saving.", "error");
+                const sec = document.getElementById("newVisitSection");
+                if (sec && (sec.style.display === "none" || sec.style.display === "")) {
+                    toggleNewDataSection();
+                }
+                return;
+            }
+
+            const calcBtn = document.getElementById("btnCalculateReport");
+            const saveBtn = document.getElementById("btnSaveEncounterOnly");
+            if (calcBtn) calcBtn.disabled = true;
+            if (saveBtn) saveBtn.disabled = true;
+
+            try {
+                showFormToast("Saving encounter to database...", "info");
+                const encResult = await saveNewVisit(patientId);
+                clearNewVisitFields();
+                loadFeedbackStats();
+                const loopStatus = (encResult.closed_transitions && encResult.closed_transitions.length > 0)
+                    ? ` (Closed ${encResult.closed_transitions.length} outcome loop(s))`
+                    : "";
+                showFormToast(`✓ Visit registered successfully into database! Total visits: ${encResult.new_visit_number}${loopStatus}. Click "Calculate Cumulative Report" to refresh the report.`, "success");
+            } catch (err) {
+                console.error("Save Encounter Error:", err);
+                showFormToast(`Failed to save encounter: ${err.message}`, "error");
+            } finally {
+                if (calcBtn) calcBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
+            }
+        }
+
+        function selectPatient(patientId) {
+            document.getElementById("patientIdInput").value = patientId;
+            clearNewVisitFields();
+            handleCalculateReport();
+        }
+
+        async function loadPatientReport(patientId, isNewDataSaved = false) {
+            const loadingBox = document.getElementById("loadingBox");
+            const errorBox = document.getElementById("errorBox");
+            const reportView = document.getElementById("reportView");
+            const calcBtn = document.getElementById("btnCalculateReport");
+            const saveBtn = document.getElementById("btnSaveEncounterOnly");
+
+            loadingBox.style.display = "block";
+            errorBox.style.display = "none";
+            reportView.style.display = "none";
+            if (calcBtn) calcBtn.disabled = true;
+            if (saveBtn) saveBtn.disabled = true;
+
+            try {
+                // Fetch Cumulative Report & Timeline in parallel
+                const [reportRes, timelineRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/reports/${encodeURIComponent(patientId)}`),
+                    fetch(`${API_BASE}/api/patients/${encodeURIComponent(patientId)}/timeline`)
+                ]);
+
+                if (!reportRes.ok) {
+                    throw new Error(`Patient ${patientId} not found in database or API error (Status ${reportRes.status}).`);
+                }
+
+                const report = await reportRes.json();
+                const timeline = timelineRes.ok ? await timelineRes.json() : [];
+
+                renderReport(report, timeline, isNewDataSaved);
+                reportView.style.display = "block";
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById("errorTitle").innerText = "Could Not Retrieve Report";
+                document.getElementById("errorMessage").innerText = err.message || "Failed to load patient report.";
+                errorBox.style.display = "block";
+            } finally {
+                loadingBox.style.display = "none";
+                if (calcBtn) calcBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
+            }
+        }
+
+        function renderReport(report, timeline, isNewDataSaved = false) {
+            const d = report.demographics;
+            const r = report.rl_recommendation;
+            const x = report.xai_explanation;
+
+            // 1. Header & Badges
+            document.getElementById("repPatientId").innerText = d.subject_id;
+            document.getElementById("repMetadata").innerText = `Report ID: ${report.report_id} • Generated at: ${report.generated_at}`;
+
+            const badge = document.getElementById("repTrajectoryBadge");
+            const status = (report.overall_trajectory_status || "stable").toLowerCase();
+            badge.innerText = `Trajectory: ${status.replace("_", " ").toUpperCase()}`;
+            badge.className = "trajectory-badge";
+            if (status.includes("rapidly")) {
+                badge.classList.add("badge-rapidly-deteriorating");
+            } else if (status.includes("deteriorat")) {
+                badge.classList.add("badge-deteriorating");
+            } else if (status === "improving") {
+                badge.classList.add("badge-improving");
+            } else {
+                badge.classList.add("badge-stable");
+            }
+
+            // 2. Demographics
+            document.getElementById("repAge").innerText = `${d.age} yrs`;
+            document.getElementById("repGender").innerText = d.gender;
+            document.getElementById("repSmoking").innerText = d.smoking_status ? d.smoking_status.charAt(0).toUpperCase() + d.smoking_status.slice(1) : "N/A";
+            document.getElementById("repActivity").innerText = d.physical_activity ? d.physical_activity.charAt(0).toUpperCase() + d.physical_activity.slice(1) : "N/A";
+            document.getElementById("repVisits").innerText = `${report.total_visits} visits`;
+            document.getElementById("repDuration").innerText = `${Math.round(report.monitoring_duration_days)} days`;
+
+            // 3. RL Recommendation
+            document.getElementById("recActionName").innerText = r.action_name;
+            document.getElementById("recInterval").innerText = r.recommended_interval;
+            document.getElementById("recUrgency").innerText = r.urgency;
+            document.getElementById("recGuidance").innerText = r.clinical_guidance;
+
+            const urgencyBadge = document.getElementById("repUrgencyBadge");
+            urgencyBadge.innerText = `Urgency: ${r.urgency}`;
+            const recCallout = document.getElementById("recCallout");
+            
+            if (r.urgency === "Critical") {
+                urgencyBadge.className = "badge-target target-off";
+                recCallout.style.borderLeftColor = "var(--danger)";
+                recCallout.style.background = "#fff5f5";
+            } else if (r.urgency === "High") {
+                urgencyBadge.className = "badge-target target-off";
+                recCallout.style.borderLeftColor = "var(--alert-high)";
+                recCallout.style.background = "#fffaf5";
+            } else if (r.urgency === "Moderate") {
+                urgencyBadge.className = "badge-target";
+                urgencyBadge.style.background = "var(--warning-light)";
+                urgencyBadge.style.color = "#856404";
+                recCallout.style.borderLeftColor = "var(--warning)";
+                recCallout.style.background = "#fffdf5";
+            } else {
+                urgencyBadge.className = "badge-target target-on";
+                recCallout.style.borderLeftColor = "var(--success)";
+                recCallout.style.background = "#f7fcf8";
+            }
+
+            // Render Q-Values Bar Chart
+            renderQChart(r.q_values, r.action_name);
+
+            // 4. SHAP Rationale
+            document.getElementById("xaiSummary").innerText = x.summary_statement;
+            document.getElementById("xaiNarrative").innerText = x.clinical_narrative;
+
+            const factorsList = document.getElementById("xaiFactorsList");
+            factorsList.innerHTML = "";
+            (x.key_factors || []).slice(0, 5).forEach(f => {
+                const li = document.createElement("li");
+                li.className = "factor-item";
+                const isPos = f.shap_attribution >= 0;
+                li.innerHTML = `
+                    <span class="factor-desc">${f.clinical_description || f.feature}</span>
+                    <span class="factor-shap ${isPos ? 'shap-pos' : 'shap-neg'}">
+                        ${isPos ? '+' : ''}${f.shap_attribution.toFixed(4)}
+                    </span>
+                `;
+                factorsList.appendChild(li);
+            });
+
+            // 5. Trajectory Table
+            const tbody = document.getElementById("trajectoryTableBody");
+            tbody.innerHTML = "";
+            (report.trajectory_metrics || []).forEach(m => {
+                const tr = document.createElement("tr");
+
+                let trendClass = "trend-stable";
+                let trendIcon = "&bull;";
+                if (m.trend === "increasing") {
+                    trendClass = "trend-up";
+                    trendIcon = "&uarr;";
+                } else if (m.trend === "decreasing") {
+                    trendClass = "trend-down";
+                    trendIcon = "&darr;";
+                }
+
+                const targetBadge = m.is_at_target 
+                    ? '<span class="badge-target target-on">On Target</span>'
+                    : '<span class="badge-target target-off">Off Target</span>';
+
+                tr.innerHTML = `
+                    <td><strong>${m.biomarker}</strong></td>
+                    <td><strong>${m.current_value}</strong> <small style="color:#6c757d">${m.unit}</small></td>
+                    <td>${m.change >= 0 ? '+' : ''}${m.change.toFixed(2)}</td>
+                    <td>${m.rate_monthly >= 0 ? '+' : ''}${m.rate_monthly.toFixed(3)}</td>
+                    <td>${m.moving_average.toFixed(2)}</td>
+                    <td class="${trendClass}">${trendIcon} ${m.trend ? m.trend.charAt(0).toUpperCase() + m.trend.slice(1) : ''}</td>
+                    <td>${m.clinical_target}</td>
+                    <td>${targetBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 6. Longitudinal Timeline Charts
+            renderTimelineCharts(timeline);
+
+            // 7. Update Export links
+            document.getElementById("btnHtmlView").href = `${API_BASE}/api/reports/${encodeURIComponent(d.subject_id)}/html`;
+            document.getElementById("btnJsonView").href = `${API_BASE}/api/reports/${encodeURIComponent(d.subject_id)}`;
+            document.getElementById("btnMdView").href = `${API_BASE}/api/reports/${encodeURIComponent(d.subject_id)}/markdown`;
+
+            // 8. Track active patient & action for Strategy 1 & 2
+            currentSubjectId = d.subject_id;
+            currentModelAction = r.action_code;
+
+            // Reset feedback states
+            document.getElementById("overrideBox").style.display = "none";
+            document.getElementById("fbSuccessMsg").style.display = "none";
+            document.getElementById("overrideActionSelect").value = (r.action_code === 0 ? "1" : "0");
+
+            // Update Trajectory Data Source Badge
+            const dsBadge = document.getElementById("dataSourceBadge");
+            dsBadge.style.display = "inline-block";
+            if (isNewDataSaved) {
+                dsBadge.style.background = "#e6f4ea";
+                dsBadge.style.border = "1px solid #ceead6";
+                dsBadge.style.color = "#137333";
+                dsBadge.innerText = `Trajectory: Updated with Latest Visit (${report.total_visits} Encounters in Database)`;
+            } else {
+                dsBadge.style.background = "#e8f0fe";
+                dsBadge.style.border = "1px solid #d2e3fc";
+                dsBadge.style.color = "#1a73e8";
+                dsBadge.innerText = `Trajectory: Existing Records (${report.total_visits} Encounters Loaded)`;
+            }
+
+            // Default next visit date to today or ~90 days after latest visit
+            const nextDate = new Date();
+            if (!document.getElementById("newVisitDate").value) {
+                document.getElementById("newVisitDate").value = nextDate.toISOString().slice(0, 10);
+            }
+        }
+
+        function renderQChart(qValues, selectedAction) {
+            const ctx = document.getElementById("qValuesChart").getContext("2d");
+            if (qChart) qChart.destroy();
+
+            const labels = Object.keys(qValues || {});
+            const data = Object.values(qValues || {});
+
+            const bgColors = labels.map(label => {
+                return label.toLowerCase() === selectedAction.toLowerCase() 
+                    ? "#1a73e8" 
+                    : "#cbd5e1";
+            });
+
+            qChart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderRadius: 4,
+                        barThickness: 24,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (item) => `Q-Value: ${item.raw.toFixed(3)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: "#f1f3f5" },
+                            ticks: { font: { family: 'Inter', size: 11 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: 'Inter', size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTimelineCharts(timeline) {
+            if (!timeline || timeline.length === 0) return;
+
+            const sorted = [...timeline].sort((a, b) => new Date(a.chartdate) - new Date(b.chartdate));
+            const labels = sorted.map((row, idx) => `V${idx + 1} (${row.chartdate ? row.chartdate.slice(0, 10) : ''})`);
+
+            // Glycemic Chart (HbA1c & Glucose)
+            const ctx1 = document.getElementById("glycemicChart").getContext("2d");
+            if (glycemicChart) glycemicChart.destroy();
+
+            const hba1cData = sorted.map(r => r.hba1c);
+            const glucoseData = sorted.map(r => r.glucose);
+
+            glycemicChart = new Chart(ctx1, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "HbA1c (%)",
+                            data: hba1cData,
+                            borderColor: "#dc3545",
+                            backgroundColor: "rgba(220, 53, 69, 0.1)",
+                            borderWidth: 2.5,
+                            tension: 0.2,
+                            yAxisID: "y",
+                            pointRadius: 4,
+                        },
+                        {
+                            label: "Glucose (mg/dL)",
+                            data: glucoseData,
+                            borderColor: "#ffc107",
+                            backgroundColor: "rgba(255, 193, 7, 0.1)",
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            tension: 0.2,
+                            yAxisID: "y1",
+                            pointRadius: 3,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "top", labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } } }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'HbA1c (%)', font: { size: 11 } },
+                            grid: { color: "#f1f3f5" }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Glucose (mg/dL)', font: { size: 11 } },
+                            grid: { drawOnChartArea: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Vitals Chart (SBP, DBP, BMI)
+            const ctx2 = document.getElementById("vitalChart").getContext("2d");
+            if (vitalChart) vitalChart.destroy();
+
+            vitalChart = new Chart(ctx2, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "Systolic BP",
+                            data: sorted.map(r => r.sbp),
+                            borderColor: "#1a73e8",
+                            backgroundColor: "rgba(26, 115, 232, 0.1)",
+                            borderWidth: 2,
+                            tension: 0.2,
+                            pointRadius: 3,
+                        },
+                        {
+                            label: "Diastolic BP",
+                            data: sorted.map(r => r.dbp),
+                            borderColor: "#17a2b8",
+                            borderWidth: 2,
+                            borderDash: [3, 3],
+                            tension: 0.2,
+                            pointRadius: 3,
+                        },
+                        {
+                            label: "BMI (kg/m²)",
+                            data: sorted.map(r => r.bmi),
+                            borderColor: "#6f42c1",
+                            borderWidth: 2,
+                            tension: 0.2,
+                            pointRadius: 3,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "top", labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: "#f1f3f5" },
+                            ticks: { font: { size: 11 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // =========================================================================
+        // CONTINUAL LEARNING & FEEDBACK (STRATEGIES 1 & 2)
+        // =========================================================================
+        let currentSubjectId = null;
+        let currentModelAction = 0;
+
+        async function loadFeedbackStats() {
+            try {
+                const res = await fetch(`${API_BASE}/api/feedback/stats`);
+                if (res.ok) {
+                    const stats = await res.json();
+                    document.getElementById("navFeedbackCount").innerText = stats.total_clinician_feedback || 0;
+                    document.getElementById("navOutcomeCount").innerText = stats.completed_transitions || 0;
+                }
+            } catch (e) {
+                console.warn("Could not load feedback stats:", e);
+            }
+        }
+
+        function toggleOverrideForm() {
+            const box = document.getElementById("overrideBox");
+            box.style.display = box.style.display === "none" ? "block" : "none";
+        }
+
+        async function submitFeedback(isOverride) {
+            if (!currentSubjectId) return;
+
+            const clinicianAction = isOverride
+                ? parseInt(document.getElementById("overrideActionSelect").value)
+                : currentModelAction;
+            const notes = isOverride
+                ? document.getElementById("overrideNotesInput").value.trim()
+                : "Clinician agreed with model recommendation.";
+
+            try {
+                const res = await fetch(`${API_BASE}/api/feedback`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        subject_id: currentSubjectId,
+                        model_action: currentModelAction,
+                        clinician_action: clinicianAction,
+                        notes: notes
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const msg = document.getElementById("fbSuccessMsg");
+                    msg.style.display = "block";
+                    msg.innerText = `✓ ${data.message} (Reward assigned: +${data.reward_assigned})`;
+                    if (isOverride) {
+                        document.getElementById("overrideBox").style.display = "none";
+                    }
+                    loadFeedbackStats();
+                }
+            } catch (err) {
+                alert("Failed to submit feedback: " + err.message);
+            }
+        }
+
+
+        async function triggerRetrain() {
+            if (!confirm("Start incremental warm-start fine-tuning on clinician feedback and longitudinal outcomes?")) return;
+
+            alert("Incremental Retraining initiated in the background. The model will run Champion vs. Challenger safety validation before updating.");
+
+            try {
+                const res = await fetch(`${API_BASE}/api/retrain`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ epochs: 3, lr: 0.00001 })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === "promoted") {
+                        alert(`🎉 Retraining Complete! Challenger model passed safety gate (Sensitivity: ${(data.deterioration_sensitivity*100).toFixed(1)}%, Specificity: ${(data.specificity*100).toFixed(1)}%) and was promoted to live production!`);
+                    } else {
+                        alert(`⚠️ Retraining Finished: Challenger did not surpass safety gate criteria. Existing champion model preserved.`);
+                    }
+                    loadFeedbackStats();
+                    if (currentSubjectId) loadPatientReport(currentSubjectId);
+                }
+            } catch (err) {
+                alert("Retraining failed: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
