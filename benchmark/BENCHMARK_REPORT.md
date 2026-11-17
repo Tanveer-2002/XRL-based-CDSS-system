@@ -16,28 +16,48 @@ This report documents the empirical evaluation and benchmarking of the primary *
 
 ---
 
-## 2. Side-by-Side Model Comparison Table
+## 2. General Classification Performance (Standard Metrics)
 
-| Model | Category | Guideline Acc (%) | Clinician Match (%) | Macro F1 | Sensitivity (%) | False Alarm (%) | Mean Return (V) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Historical Clinician | Empirical Baseline | 58.81 | 100.0 | 0.6724 | 100.0 | 0.0 | 13.55 |
-| XGBoost | Supervised ML | 56.65 | 72.62 | 0.6055 | 99.06 | 0.0 | 18.07 |
-| Behavioral Cloning (BC) | Imitation Learning | 57.41 | 70.09 | 0.5955 | 96.71 | 1.07 | 18.18 |
-| Discrete BCQ | Offline RL (Constraint) | 52.34 | 61.98 | 0.475 | 95.77 | 11.81 | 16.17 |
-| Discrete CQL (Ours) | Offline RL (Conservative Q) | 53.49 | 62.48 | 0.4921 | 95.31 | 12.34 | 16.02 |
+| Model | Accuracy (%) | Balanced Accuracy (%) | Macro Precision (%) | Macro Recall (%) | Macro F1 | Weighted F1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Historical Clinician | 53.26 | 60.84 | 70.69 | 60.84 | 0.6084 | 0.5197 |
+| XGBoost | 17.06 | 30.53 | 10.52 | 30.53 | 0.1228 | 0.107 |
+| Behavioral Cloning (BC) | 41.8 | 46.25 | 50.03 | 46.25 | 0.4055 | 0.3175 |
+| Discrete BCQ | 38.15 | 46.45 | 40.01 | 46.45 | 0.3328 | 0.2715 |
+| Discrete CQL (Ours) | 42.45 | 50.65 | 37.89 | 50.65 | 0.4057 | 0.2934 |
 
 ---
 
-## 3. Metric Descriptions & Interpretation
+## 3. Comprehensive Clinical Decision & Offline RL Evaluation
+
+| Model | Category | Guideline Acc (%) | Balanced Acc (%) | Clinician Match (%) | Macro F1 | Sensitivity (%) | False Alarm (%) | False / Pt-Yr | Median Lead Time (d) | Adjacent Acc (%) | Mean Return (V) | FQE Value |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Historical Clinician | Empirical Baseline | 53.26 | 60.84 | 100.0 | 0.6084 | 100.0 | 0.0 | 0.0 | 0.0 | 96.35 | 13.25 | 3.08 |
+| XGBoost | Supervised ML | 17.06 | 30.53 | 23.05 | 0.1228 | 99.35 | 69.51 | 1.85 | 230.0 | 47.4 | -6.11 | 1.76 |
+| Behavioral Cloning (BC) | Imitation Learning | 41.8 | 46.25 | 60.42 | 0.4055 | 66.23 | 5.79 | 0.15 | 0.0 | 89.84 | 12.69 | 3.71 |
+| Discrete BCQ | Offline RL (Constraint) | 38.15 | 46.45 | 48.57 | 0.3328 | 87.01 | 35.95 | 0.96 | 0.0 | 91.28 | 7.92 | 3.45 |
+| Discrete CQL (Ours) | Offline RL (Conservative Q) | 42.45 | 50.65 | 59.64 | 0.4057 | 73.38 | 10.9 | 0.29 | 0.0 | 92.19 | 13.15 | 3.48 |
+
+---
+
+## 4. Metric Descriptions & Interpretation
 1. **Clinical Guideline Accuracy (%)**: Percentage of encounters where the model's recommendation perfectly matched the Gold-Standard American Diabetes Association (ADA) clinical rules.
-2. **Clinician Action Match (%)**: Concordance with historical physician practice in the raw EHR records.
-3. **Macro F1-Score**: Unweighted mean of F1-scores across all 4 action classes, penalizing models that fail on rare critical alert actions.
-4. **Early Deterioration Sensitivity (%)**: Percentage of deteriorating or rapidly deteriorating encounters where an active monitoring or clinical alert was raised.
-5. **Alarm Fatigue False Alarm Rate (%)**: Rate at which high-urgency alerts were inappropriately fired for stable, well-controlled patients (lower is better to prevent alarm fatigue).
-6. **Mean Trajectory Return ($V^\pi$)**: Cumulative discounted reward ($\sum_{t=0}^T \gamma^t r_t$) accumulated across patient episodes under the learned policy.
+2. **Balanced Accuracy (%)**: Macro-averaged recall across all 4 monitoring classes ($\frac{1}{\text{C}}\sum \text{Recall}_c$), preventing majority class bias.
+3. **Macro Precision (%)**: Unweighted average precision across all 4 classes, measuring positive predictive fidelity without majority skew.
+4. **Macro Recall (%)**: Unweighted average recall across all 4 classes, equivalent to Balanced Accuracy.
+5. **Macro F1-Score**: Unweighted harmonic mean of precision and recall across all 4 action classes, penalizing models that fail on rare critical alert actions.
+6. **Weighted F1-Score**: F1-score weighted by class prevalence in the clinical test cohort.
+7. **Early Deterioration Sensitivity (%)**: Percentage of deteriorating or rapidly deteriorating encounters where an active monitoring or clinical alert was raised.
+8. **Alarm Fatigue False Alarm Rate (%)**: Percentage of stable encounters with unwarranted high-urgency alerts.
+9. **False Alerts per Patient-Year**: Clinically normalized frequency of false alarms per 365.25 days of patient observation (lower is better to prevent alarm fatigue).
+10. **Median Early Warning Lead Time (Days)**: Median days in advance of acute deterioration onset that the model first escalated monitoring.
+11. **Action Adjacency Concordance (%)**: Percentage of predictions within $\pm 1$ tier of the clinical guideline ($|a_{\text{pred}} - a_{\text{true}}| \le 1$), evaluating near-miss safety.
+12. **Mean Trajectory Return ($V^\pi$)**: Cumulative discounted reward ($\sum_{t=0}^T \gamma^t r_t$) accumulated across patient episodes under the learned policy.
+13. **Fitted Q-Evaluation (FQE Value)**: Off-Policy Evaluation (OPE) estimate of expected return from initial visit states ($s_0$), evaluating value without importance sampling variance.
 
 ---
 
-## 4. Visual Artifacts
-- Comparison Bar Charts: `model_benchmark_comparison.png`
+## 5. Visual Artifacts
+- General Classification Metrics: `general_metrics_comparison.png`
+- 8-Panel Comparison Bar Charts: `model_benchmark_comparison.png`
 - Confusion Matrix Grid: `confusion_matrices_all.png`

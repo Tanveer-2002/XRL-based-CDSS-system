@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
 import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -335,8 +335,9 @@ def create_rl_dataloaders(
     val_split: float = 0.2,
     batch_size: int = 64,
     seed: int = 42,
+    balanced_power: float = 0.20,
 ) -> Tuple[DataLoader, DataLoader, OfflineRLDataset, OfflineRLDataset]:
-    """Splits patient trajectories by subject_id (zero leakage) and builds PyTorch DataLoaders."""
+    """Splits patient trajectories by subject_id (zero leakage) and builds PyTorch DataLoaders with balanced sampling."""
     if state_constructor is None:
         state_constructor = StateConstructor()
 
@@ -351,8 +352,20 @@ def create_rl_dataloaders(
     train_dataset = OfflineRLDataset(s_tr, a_tr, r_tr, ns_tr, d_tr)
     val_dataset = OfflineRLDataset(s_val, a_val, r_val, ns_val, d_val)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=(len(train_dataset) > batch_size))
+    if balanced_power > 0:
+        class_counts = np.bincount(a_tr, minlength=config.NUM_ACTIONS)
+        class_weights = 1.0 / (np.maximum(class_counts, 1).astype(np.float32) ** balanced_power)
+        sample_weights = class_weights[a_tr]
+        sampler = WeightedRandomSampler(
+            weights=torch.tensor(sample_weights, dtype=torch.float32),
+            num_samples=len(train_dataset),
+            replacement=True,
+        )
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler, drop_last=(len(train_dataset) > batch_size))
+    else:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=(len(train_dataset) > batch_size))
+
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    print(f"[OK] DataLoaders created: Train={len(train_dataset)} transitions, Val={len(val_dataset)} transitions.")
+    print(f"[OK] DataLoaders created: Train={len(train_dataset)} transitions, Val={len(val_dataset)} transitions (balanced_power={balanced_power}).")
     return train_loader, val_loader, train_dataset, val_dataset

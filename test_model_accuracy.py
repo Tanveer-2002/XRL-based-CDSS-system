@@ -36,6 +36,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.metrics import (
     accuracy_score,
+    balanced_accuracy_score,
     classification_report,
     confusion_matrix,
     f1_score,
@@ -77,6 +78,8 @@ def evaluate_split_performance(
 
     stable_total = 0
     false_alarms_cql = 0
+    total_patient_years = 0.0
+    lead_times = []
 
     grouped = df_split.groupby("subject_id")
 
@@ -84,6 +87,16 @@ def evaluate_split_performance(
         records = group.sort_values(by="chartdate").reset_index(drop=True)
         T = len(records)
         traj_ret = 0.0
+
+        min_days = float(records["cumulative_days"].min()) if "cumulative_days" in records else 0.0
+        max_days = float(records["cumulative_days"].max()) if "cumulative_days" in records else 0.0
+        span_days = max(max_days - min_days, float(records["days_since_last_visit"].sum()) if "days_since_last_visit" in records else 30.0)
+        span_days = max(span_days, 30.0)
+        total_patient_years += span_days / 365.25
+
+        patient_preds = []
+        patient_clin_rules = []
+        patient_statuses = []
 
         for t in range(T):
             curr_row = records.iloc[t]
@@ -120,9 +133,13 @@ def evaluate_split_performance(
             y_true_clinical.append(a_clinical)
             y_pred_cql.append(a_cql)
             y_behavior.append(a_behav)
+            patient_preds.append(a_cql)
+            patient_clin_rules.append(a_clinical)
 
             # Clinical safety sensitivities
             status = curr_row.get("overall_trajectory_status", "stable")
+            patient_statuses.append(status)
+
             if status in ["deteriorating", "rapidly_deteriorating"]:
                 deteriorating_total += 1
                 if a_cql in [MonitoringAction.EARLY_RISK_ALERT, MonitoringAction.CLINICAL_EVALUATION, MonitoringAction.INCREASED_MONITORING]:
@@ -134,8 +151,47 @@ def evaluate_split_performance(
 
         trajectory_returns.append(traj_ret)
 
+        # Lead time calculation
+        for t in range(T):
+            status = patient_statuses[t]
+            a_clin = patient_clin_rules[t]
+            is_critical = (
+                a_clin == MonitoringAction.CLINICAL_EVALUATION
+                or status == "rapidly_deteriorating"
+                or (status == "deteriorating" and a_clin >= MonitoringAction.EARLY_RISK_ALERT)
+            )
+
+            prev_crit = False
+            if t > 0:
+                prev_status = patient_statuses[t - 1]
+                prev_clin = patient_clin_rules[t - 1]
+                prev_crit = (
+                    prev_clin == MonitoringAction.CLINICAL_EVALUATION
+                    or prev_status == "rapidly_deteriorating"
+                    or (prev_status == "deteriorating" and prev_clin >= MonitoringAction.EARLY_RISK_ALERT)
+                )
+
+            if is_critical and not prev_crit:
+                t_alert = None
+                for k in range(t, -1, -1):
+                    if patient_preds[k] in [
+                        MonitoringAction.INCREASED_MONITORING,
+                        MonitoringAction.EARLY_RISK_ALERT,
+                        MonitoringAction.CLINICAL_EVALUATION,
+                    ]:
+                        t_alert = k
+                    else:
+                        break
+                if t_alert is not None:
+                    lt = float(records.iloc[t]["cumulative_days"]) - float(records.iloc[t_alert]["cumulative_days"])
+                else:
+                    lt = 0.0
+                lead_times.append(lt)
+
     # 1. Action Concordance Accuracy
     accuracy = accuracy_score(y_true_clinical, y_pred_cql)
+    bal_acc = balanced_accuracy_score(y_true_clinical, y_pred_cql) * 100.0
+    adjacent_acc = float(np.mean(np.abs(np.array(y_true_clinical) - np.array(y_pred_cql)) <= 1) * 100.0)
     f1_macro = f1_score(y_true_clinical, y_pred_cql, average="macro", zero_division=0)
     f1_weighted = f1_score(y_true_clinical, y_pred_cql, average="weighted", zero_division=0)
 
@@ -145,6 +201,8 @@ def evaluate_split_performance(
     # 3. Clinical Safety Metrics
     early_det_rate = (early_detected_cql / max(1, deteriorating_total)) * 100.0
     false_alert_rate = (false_alarms_cql / max(1, stable_total)) * 100.0
+    false_alerts_per_pt_year = false_alarms_cql / total_patient_years if total_patient_years > 0 else 0.0
+    median_lead_time = float(np.median(lead_times)) if lead_times else 0.0
     specificity = 100.0 - false_alert_rate
 
     # Binary Safety Concordance (Appropriate Escalation when deteriorating + Routine when stable)
@@ -175,6 +233,8 @@ def evaluate_split_performance(
         "num_patients": grouped.ngroups,
         "num_encounters": len(y_pred_cql),
         "accuracy": accuracy,
+        "balanced_accuracy": bal_acc,
+        "adjacent_accuracy": adjacent_acc,
         "binary_safety_concordance": binary_safety_concordance,
         "specificity": specificity,
         "f1_macro": f1_macro,
@@ -182,6 +242,8 @@ def evaluate_split_performance(
         "behavior_concordance": behav_concordance,
         "early_detection_rate": early_det_rate,
         "false_alert_rate": false_alert_rate,
+        "false_alerts_per_patient_year": false_alerts_per_pt_year,
+        "median_lead_time": median_lead_time,
         "mean_td_loss": mean_td_loss,
         "mean_trajectory_return": mean_return,
         "confusion_matrix": cm,
@@ -200,11 +262,14 @@ def print_simple_accuracy_report(train_res: dict, test_res: dict):
     print("=" * 68)
     print(f"  - Overall Clinical Decision Accuracy : {test_res['binary_safety_concordance']:>5.1f}%  (Correct medical decision)")
     print(f"  - Exact Guideline Match Accuracy     : {test_res['accuracy']*100:>5.1f}%  (Matches static ADA rules)")
+    print(f"  - Balanced Accuracy (Macro Recall)   : {test_res['balanced_accuracy']:>5.1f}%  (Unweighted across all 4 tiers)")
+    print(f"  - Action Adjacency Concordance       : {test_res['adjacent_accuracy']:>5.1f}%  (Within +/-1 monitoring tier)")
     print("-" * 68)
     print("  ESSENTIAL ACCURACY CHECKS (ON UNSEEN TEST PATIENTS):")
     print(f"  1. Catching Deteriorating Patients   : {test_res['early_detection_rate']:>5.1f}%  (Zero worsening patients missed)")
-    print(f"  2. Correctly Identifying Stable      : {test_res['specificity']:>5.1f}%  (Low false alert rate: {test_res['false_alert_rate']:.1f}%)")
-    print(f"  3. Generalization to New Patients    : {gen_gap:>+5.2f}%  (Near-zero overfitting between train & test)")
+    print(f"  2. Median Early Warning Lead Time    : {test_res['median_lead_time']:>5.1f} days (Advance warning before crisis)")
+    print(f"  3. Correctly Identifying Stable      : {test_res['specificity']:>5.1f}%  (False alerts: {test_res['false_alerts_per_patient_year']:.2f} / pt-year)")
+    print(f"  4. Generalization to New Patients    : {gen_gap:>+5.2f}%  (Near-zero overfitting between train & test)")
     print("-" * 68)
     print(f"  Tested on: {test_res['num_patients']} unseen test patients across {test_res['num_encounters']} clinical encounters")
     print("=" * 68 + "\n")
@@ -222,8 +287,12 @@ def print_comparison_table(train_res: dict, test_res: dict):
     print(f"{'Cohort Patients':<35} | {train_res['num_patients']:<17} | {test_res['num_patients']:<17}")
     print(f"{'Longitudinal Encounters':<35} | {train_res['num_encounters']:<17} | {test_res['num_encounters']:<17}")
     print(f"{'Exact Guideline Match Accuracy':<35} | {train_res['accuracy']*100:>15.2f}% | {test_res['accuracy']*100:>15.2f}%")
+    print(f"{'Balanced Accuracy (Macro Recall)':<35} | {train_res['balanced_accuracy']:>15.2f}% | {test_res['balanced_accuracy']:>15.2f}%")
+    print(f"{'Action Adjacency Concordance':<35} | {train_res['adjacent_accuracy']:>15.2f}% | {test_res['adjacent_accuracy']:>15.2f}%")
     print(f"{'Binary Safety Concordance':<35} | {train_res['binary_safety_concordance']:>15.2f}% | {test_res['binary_safety_concordance']:>15.2f}%")
     print(f"{'Early Deterioration Sensitivity':<35} | {train_res['early_detection_rate']:>15.2f}% | {test_res['early_detection_rate']:>15.2f}%")
+    print(f"{'Median Early Warning Lead Time':<35} | {train_res['median_lead_time']:>13.1f} d | {test_res['median_lead_time']:>13.1f} d")
+    print(f"{'False Alerts / Patient-Year':<35} | {train_res['false_alerts_per_patient_year']:>16.2f} | {test_res['false_alerts_per_patient_year']:>16.2f}")
     print(f"{'Stable Patient Specificity':<35} | {train_res['specificity']:>15.2f}% | {test_res['specificity']:>15.2f}%")
     print(f"{'Alarm Fatigue (False Alert Rate)':<35} | {train_res['false_alert_rate']:>15.2f}% | {test_res['false_alert_rate']:>15.2f}%")
     print(f"{'Macro-Average F1-Score':<35} | {train_res['f1_macro']:>16.4f} | {test_res['f1_macro']:>16.4f}")

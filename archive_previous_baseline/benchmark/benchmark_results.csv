@@ -1,0 +1,6 @@
+Model,Category,Guideline Acc (%),Balanced Acc (%),Clinician Match (%),Macro F1,Sensitivity (%),False Alarm (%),False / Pt-Yr,Median Lead Time (d),Adjacent Acc (%),Mean Return (V),FQE Value
+Historical Clinician,Empirical Baseline,53.75,64.06,100.0,0.6391,100.0,0.0,0.0,0.0,94.47,13.76,3.24
+XGBoost,Supervised ML,21.34,29.06,22.92,0.1378,100.0,76.19,1.98,178.0,43.48,-7.68,2.31
+Behavioral Cloning (BC),Imitation Learning,44.27,44.59,63.24,0.4046,71.19,3.7,0.1,0.0,88.54,13.45,3.24
+Discrete BCQ,Offline RL (Constraint),36.36,43.31,43.87,0.2997,88.14,37.04,0.96,0.0,89.33,7.35,3.01
+Discrete CQL (Ours),Offline RL (Conservative Q),36.76,30.57,56.92,0.2222,18.64,1.06,0.03,0.0,79.05,8.07,3.03

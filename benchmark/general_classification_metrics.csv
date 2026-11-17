@@ -1,0 +1,6 @@
+Model,Accuracy (%),Balanced Accuracy (%),Macro Precision (%),Macro Recall (%),Macro F1,Weighted F1
+Historical Clinician,53.26,60.84,70.69,60.84,0.6084,0.5197
+XGBoost,17.06,30.53,10.52,30.53,0.1228,0.107
+Behavioral Cloning (BC),41.8,46.25,50.03,46.25,0.4055,0.3175
+Discrete BCQ,38.15,46.45,40.01,46.45,0.3328,0.2715
+Discrete CQL (Ours),42.45,50.65,37.89,50.65,0.4057,0.2934

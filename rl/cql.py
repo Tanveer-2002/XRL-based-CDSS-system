@@ -284,22 +284,21 @@ def train_cql_agent(
                 f"Val TD: {val_td_loss:.4f}"
             )
 
-        if val_td_loss < best_val_loss:
-            best_val_loss = val_td_loss
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            torch.save(
-                {
-                    "model_state_dict": model.state_dict(),
-                    "state_dim": state_dim,
-                    "num_actions": config.NUM_ACTIONS,
-                    "cql_alpha": cql_alpha,
-                    "best_val_loss": best_val_loss,
-                    "history": history,
-                },
-                save_path,
-            )
+    # Save final converged model checkpoint
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "state_dim": state_dim,
+            "num_actions": config.NUM_ACTIONS,
+            "cql_alpha": cql_alpha,
+            "final_val_loss": val_td_loss,
+            "history": history,
+        },
+        save_path,
+    )
 
-    print(f"[OK] Discrete CQL training complete. Best model checkpoint saved to: {save_path}")
+    print(f"[OK] Discrete CQL training complete. Converged model checkpoint saved to: {save_path}")
     return model, history
 
 # Alias for backward compatibility

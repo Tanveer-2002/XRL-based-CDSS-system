@@ -27,20 +27,26 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from benchmark.evaluate_all import run_full_benchmark
-from benchmark.visualize import plot_side_by_side_benchmark
+from benchmark.visualize import (
+    plot_side_by_side_benchmark,
+    plot_general_classification_metrics,
+)
 
 
-def generate_markdown_report(summary_df: pd.DataFrame, output_path: Path):
+def generate_markdown_report(summary_df: pd.DataFrame, general_df: pd.DataFrame, output_path: Path):
     """Generates an academic thesis-ready markdown summary."""
-    # Custom markdown table generator without external dependencies
-    headers = summary_df.columns.tolist()
-    header_line = "| " + " | ".join(headers) + " |"
-    separator_line = "| " + " | ".join(["---"] * len(headers)) + " |"
-    data_lines = []
-    for _, row in summary_df.iterrows():
-        row_str = "| " + " | ".join(str(val) for val in row.values) + " |"
-        data_lines.append(row_str)
-    table_md = "\n".join([header_line, separator_line] + data_lines)
+    def df_to_md(df):
+        headers = df.columns.tolist()
+        header_line = "| " + " | ".join(headers) + " |"
+        separator_line = "| " + " | ".join(["---"] * len(headers)) + " |"
+        data_lines = []
+        for _, row in df.iterrows():
+            row_str = "| " + " | ".join(str(val) for val in row.values) + " |"
+            data_lines.append(row_str)
+        return "\n".join([header_line, separator_line] + data_lines)
+
+    table_md = df_to_md(summary_df)
+    general_table_md = df_to_md(general_df)
 
     md_content = f"""# Multi-Model Benchmark Report: Type 2 Diabetes CDSS
 
@@ -60,24 +66,38 @@ This report documents the empirical evaluation and benchmarking of the primary *
 
 ---
 
-## 2. Side-by-Side Model Comparison Table
+## 2. General Classification Performance (Standard Metrics)
+
+{general_table_md}
+
+---
+
+## 3. Comprehensive Clinical Decision & Offline RL Evaluation
 
 {table_md}
 
 ---
 
-## 3. Metric Descriptions & Interpretation
+## 4. Metric Descriptions & Interpretation
 1. **Clinical Guideline Accuracy (%)**: Percentage of encounters where the model's recommendation perfectly matched the Gold-Standard American Diabetes Association (ADA) clinical rules.
-2. **Clinician Action Match (%)**: Concordance with historical physician practice in the raw EHR records.
-3. **Macro F1-Score**: Unweighted mean of F1-scores across all 4 action classes, penalizing models that fail on rare critical alert actions.
-4. **Early Deterioration Sensitivity (%)**: Percentage of deteriorating or rapidly deteriorating encounters where an active monitoring or clinical alert was raised.
-5. **Alarm Fatigue False Alarm Rate (%)**: Rate at which high-urgency alerts were inappropriately fired for stable, well-controlled patients (lower is better to prevent alarm fatigue).
-6. **Mean Trajectory Return ($V^\pi$)**: Cumulative discounted reward ($\sum_{{t=0}}^T \gamma^t r_t$) accumulated across patient episodes under the learned policy.
+2. **Balanced Accuracy (%)**: Macro-averaged recall across all 4 monitoring classes ($\\frac{{1}}{{\\text{{C}}}}\\sum \\text{{Recall}}_c$), preventing majority class bias.
+3. **Macro Precision (%)**: Unweighted average precision across all 4 classes, measuring positive predictive fidelity without majority skew.
+4. **Macro Recall (%)**: Unweighted average recall across all 4 classes, equivalent to Balanced Accuracy.
+5. **Macro F1-Score**: Unweighted harmonic mean of precision and recall across all 4 action classes, penalizing models that fail on rare critical alert actions.
+6. **Weighted F1-Score**: F1-score weighted by class prevalence in the clinical test cohort.
+7. **Early Deterioration Sensitivity (%)**: Percentage of deteriorating or rapidly deteriorating encounters where an active monitoring or clinical alert was raised.
+8. **Alarm Fatigue False Alarm Rate (%)**: Percentage of stable encounters with unwarranted high-urgency alerts.
+9. **False Alerts per Patient-Year**: Clinically normalized frequency of false alarms per 365.25 days of patient observation (lower is better to prevent alarm fatigue).
+10. **Median Early Warning Lead Time (Days)**: Median days in advance of acute deterioration onset that the model first escalated monitoring.
+11. **Action Adjacency Concordance (%)**: Percentage of predictions within $\\pm 1$ tier of the clinical guideline ($|a_{{\\text{{pred}}}} - a_{{\\text{{true}}}}| \\le 1$), evaluating near-miss safety.
+12. **Mean Trajectory Return ($V^\\pi$)**: Cumulative discounted reward ($\\sum_{{t=0}}^T \\gamma^t r_t$) accumulated across patient episodes under the learned policy.
+13. **Fitted Q-Evaluation (FQE Value)**: Off-Policy Evaluation (OPE) estimate of expected return from initial visit states ($s_0$), evaluating value without importance sampling variance.
 
 ---
 
-## 4. Visual Artifacts
-- Comparison Bar Charts: `model_benchmark_comparison.png`
+## 5. Visual Artifacts
+- General Classification Metrics: `general_metrics_comparison.png`
+- 8-Panel Comparison Bar Charts: `model_benchmark_comparison.png`
 - Confusion Matrix Grid: `confusion_matrices_all.png`
 """
     output_path.write_text(md_content, encoding="utf-8")
@@ -111,12 +131,39 @@ def main():
     summary_df.to_csv(csv_path, index=False)
     print(f"[OK] Tabular benchmark results saved to: {csv_path}")
 
-    # 3. Generate Visual Plots
+    # 3. Extract and Save Dedicated General Classification Metrics Table
+    general_rows = []
+    for model_name, res in all_results.items():
+        general_rows.append({
+            "Model": model_name,
+            "Accuracy (%)": round(res["accuracy_guideline"], 2),
+            "Balanced Accuracy (%)": round(res["balanced_accuracy"], 2),
+            "Macro Precision (%)": round(res["macro_precision"], 2),
+            "Macro Recall (%)": round(res["macro_recall"], 2),
+            "Macro F1": round(res["f1_macro"], 4),
+            "Weighted F1": round(res["f1_weighted"], 4),
+        })
+    general_df = pd.DataFrame(general_rows)
+    gen_csv = benchmark_dir / "general_classification_metrics.csv"
+    general_df.to_csv(gen_csv, index=False)
+    print(f"[OK] General classification metrics saved to: {gen_csv}")
+
+    print("\n" + "=" * 90)
+    print("                 GENERAL CLASSIFICATION METRICS (ACCURACY, F1, PRECISION, RECALL)")
+    print("=" * 90)
+    print(general_df.to_string(index=False))
+    print("=" * 90 + "\n")
+
+    # 4. Generate Visual Plots
     plot_side_by_side_benchmark(summary_df, all_results)
 
-    # 4. Generate Markdown Report
+    # 5. Generate Dedicated General Classification Plot
+    gen_plot_path = benchmark_dir / "general_metrics_comparison.png"
+    plot_general_classification_metrics(general_df, gen_plot_path)
+
+    # 6. Generate Markdown Report
     report_path = benchmark_dir / "BENCHMARK_REPORT.md"
-    generate_markdown_report(summary_df, report_path)
+    generate_markdown_report(summary_df, general_df, report_path)
 
     print("\n" + "=" * 90)
     print("[SUCCESS] All baseline models evaluated and benchmarked successfully!")

@@ -21,8 +21,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn.metrics import accuracy_score, f1_score
+from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
+from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -50,16 +50,17 @@ def train_quick_cql(
     ns_tr: np.ndarray,
     d_tr: np.ndarray,
     state_dim: int,
-    epochs: int = 25,
+    epochs: int = 30,
     batch_size: int = 64,
     gamma: float = 0.99,
-    cql_alpha: float = 1.0,
+    cql_alpha: float = 2.5,
+    balanced_power: float = 0.20,
     lr: float = 3e-4,
     device: str = "cpu",
 ) -> DiscreteCQLNetwork:
-    """Trains Discrete CQL on a transition subset."""
+    """Trains Discrete CQL with conservative penalty and class-balanced sampling on a transition subset."""
     cql = DiscreteCQLNetwork(state_dim=state_dim, num_actions=config.NUM_ACTIONS).to(device)
-    optimizer = optim.Adam(cql.parameters(), lr=lr)
+    optimizer = optim.Adam(cql.parameters(), lr=lr, weight_decay=1e-4)
 
     dataset = TensorDataset(
         torch.tensor(s_tr, dtype=torch.float32),
@@ -68,7 +69,19 @@ def train_quick_cql(
         torch.tensor(ns_tr, dtype=torch.float32),
         torch.tensor(d_tr, dtype=torch.float32),
     )
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    if balanced_power > 0:
+        class_counts = np.bincount(a_tr, minlength=config.NUM_ACTIONS)
+        class_weights = 1.0 / (np.maximum(class_counts, 1).astype(np.float32) ** balanced_power)
+        sample_weights = class_weights[a_tr]
+        sampler = WeightedRandomSampler(
+            weights=torch.tensor(sample_weights, dtype=torch.float32),
+            num_samples=len(dataset),
+            replacement=True,
+        )
+        loader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, drop_last=(len(dataset) > batch_size))
+    else:
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=(len(dataset) > batch_size))
 
     for _ in range(epochs):
         cql.train()
@@ -76,9 +89,14 @@ def train_quick_cql(
             s_b, a_b, r_b, ns_b, d_b = s_b.to(device), a_b.to(device), r_b.to(device), ns_b.to(device), d_b.to(device)
 
             with torch.no_grad():
+                next_q1, _ = cql(ns_b)
+                next_acts = torch.argmax(next_q1, dim=-1, keepdim=True)
                 tq1, tq2 = cql.target_q(ns_b)
-                max_next_q = torch.max(torch.min(tq1, tq2), dim=-1)[0]
-                target_y = r_b + (1.0 - d_b) * gamma * max_next_q
+                min_target_next_q = torch.min(
+                    tq1.gather(1, next_acts),
+                    tq2.gather(1, next_acts),
+                ).squeeze(1)
+                target_y = r_b + (1.0 - d_b) * gamma * min_target_next_q
 
             q1_all = cql.q1(s_b)
             q2_all = cql.q2(s_b)
@@ -253,12 +271,14 @@ def evaluate_agent(
         returns.append(traj_ret)
 
     acc = accuracy_score(y_true, y_pred) * 100.0
+    bal_acc = balanced_accuracy_score(y_true, y_pred) * 100.0
     f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
     sens = (early_detected / deteriorating_total * 100.0) if deteriorating_total > 0 else 0.0
     mean_ret = float(np.mean(returns))
 
     return {
         "guideline_acc": acc,
+        "balanced_acc": bal_acc,
         "macro_f1": f1,
         "sensitivity": sens,
         "mean_return": mean_ret,
@@ -311,7 +331,18 @@ def run_scaling_experiment(
         rows.append({"Fraction": f"{int(frac*100)}%", "Patients": k, "Transitions": len(s_tr), "Model": "Discrete BCQ", **bcq_res})
 
         # 4. Train Discrete CQL (Ours)
-        cql = train_quick_cql(s_tr, a_tr, r_tr, ns_tr, d_tr, state_dim=sc.state_dim, epochs=25, device=device)
+        cql = train_quick_cql(
+            s_tr,
+            a_tr,
+            r_tr,
+            ns_tr,
+            d_tr,
+            state_dim=sc.state_dim,
+            epochs=30,
+            cql_alpha=2.5,
+            balanced_power=0.20,
+            device=device,
+        )
         cql_res = evaluate_agent(
             lambda s: cql.select_action(torch.tensor(s, dtype=torch.float32, device=device).unsqueeze(0), deterministic=True),
             test_df,
@@ -319,10 +350,10 @@ def run_scaling_experiment(
         )
         rows.append({"Fraction": f"{int(frac*100)}%", "Patients": k, "Transitions": len(s_tr), "Model": "Discrete CQL (Ours)", **cql_res})
 
-        print(f"    - XGBoost: Return={xgb_res['mean_return']:.2f} | Macro F1={xgb_res['macro_f1']:.3f}")
-        print(f"    - BC     : Return={bc_res['mean_return']:.2f} | Macro F1={bc_res['macro_f1']:.3f}")
-        print(f"    - BCQ    : Return={bcq_res['mean_return']:.2f} | Macro F1={bcq_res['macro_f1']:.3f}")
-        print(f"    - CQL    : Return={cql_res['mean_return']:.2f} | Macro F1={cql_res['macro_f1']:.3f}")
+        print(f"    - XGBoost: Return={xgb_res['mean_return']:.2f} | Bal Acc={xgb_res['balanced_acc']:.1f}% | Macro F1={xgb_res['macro_f1']:.3f}")
+        print(f"    - BC     : Return={bc_res['mean_return']:.2f} | Bal Acc={bc_res['balanced_acc']:.1f}% | Macro F1={bc_res['macro_f1']:.3f}")
+        print(f"    - BCQ    : Return={bcq_res['mean_return']:.2f} | Bal Acc={bcq_res['balanced_acc']:.1f}% | Macro F1={bcq_res['macro_f1']:.3f}")
+        print(f"    - CQL    : Return={cql_res['mean_return']:.2f} | Bal Acc={cql_res['balanced_acc']:.1f}% | Macro F1={cql_res['macro_f1']:.3f}")
 
     results_df = pd.DataFrame(rows)
     return results_df

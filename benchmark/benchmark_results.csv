@@ -1,6 +1,6 @@
-Model,Category,Guideline Acc (%),Clinician Match (%),Macro F1,Sensitivity (%),False Alarm (%),Mean Return (V)
-Historical Clinician,Empirical Baseline,58.81,100.0,0.6724,100.0,0.0,13.55
-XGBoost,Supervised ML,56.65,72.62,0.6055,99.06,0.0,18.07
-Behavioral Cloning (BC),Imitation Learning,57.41,70.09,0.5955,96.71,1.07,18.18
-Discrete BCQ,Offline RL (Constraint),52.34,61.98,0.475,95.77,11.81,16.17
-Discrete CQL (Ours),Offline RL (Conservative Q),53.49,62.48,0.4921,95.31,12.34,16.02
+Model,Category,Guideline Acc (%),Balanced Acc (%),Clinician Match (%),Macro F1,Sensitivity (%),False Alarm (%),False / Pt-Yr,Median Lead Time (d),Adjacent Acc (%),Mean Return (V),FQE Value
+Historical Clinician,Empirical Baseline,53.26,60.84,100.0,0.6084,100.0,0.0,0.0,0.0,96.35,13.25,3.08
+XGBoost,Supervised ML,17.06,30.53,23.05,0.1228,99.35,69.51,1.85,230.0,47.4,-6.11,1.76
+Behavioral Cloning (BC),Imitation Learning,41.8,46.25,60.42,0.4055,66.23,5.79,0.15,0.0,89.84,12.69,3.71
+Discrete BCQ,Offline RL (Constraint),38.15,46.45,48.57,0.3328,87.01,35.95,0.96,0.0,91.28,7.92,3.45
+Discrete CQL (Ours),Offline RL (Conservative Q),42.45,50.65,59.64,0.4057,73.38,10.9,0.29,0.0,92.19,13.15,3.48

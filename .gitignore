@@ -46,6 +46,8 @@ models/encoders/*
 # =========================================================================
 reports/*
 !reports/.gitkeep
+!reports/*.py
+!reports/CDSS_COMPREHENSIVE_EVALUATION_DOCUMENTATION.pdf
 *.png
 *.jpg
 *.jpeg

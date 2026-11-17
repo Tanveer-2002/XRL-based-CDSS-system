@@ -192,14 +192,14 @@ NUM_ACTIONS = len(ACTION_NAMES)
 # Offline Reinforcement Learning Hyperparameters (Discrete CQL)
 RL_CONFIG = {
     "gamma": 0.99,
-    "cql_alpha": 1.0,               # Temperature/scale for conservative penalty logsumexp
+    "cql_alpha": 2.5,               # Calibrated temperature/scale for conservative logsumexp
     "lr": 3e-4,
     "batch_size": 64,
     "hidden_dim": 128,
     "num_hidden_layers": 2,
-    "tau": 0.005,                   # Soft target network update rate
+    "tau": 0.01,                    # Soft target network update rate
     "target_update_interval": 1,
-    "num_epochs": 40,
+    "num_epochs": 35,
     "device": "cuda" if os.environ.get("USE_CUDA", "1") == "1" else "cpu",
     "val_split": 0.2,
     "seed": 42,
